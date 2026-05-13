@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Org Chart Editor</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #eef0f5;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Toolbar ──────────────────────────────── */
+#toolbar {
+  background: #1e1b4b;
+  color: white;
+  padding: 9px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+#toolbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #c7d2fe;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+.sep    { width: 1px; height: 22px; background: rgba(255,255,255,0.2); margin: 0 2px; flex-shrink: 0; }
+.spacer { flex: 1; min-width: 6px; }
+
+.btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.12s, transform 0.06s, opacity 0.12s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn:active          { transform: scale(0.96); }
+.btn:disabled        { opacity: 0.35; cursor: default; }
+.btn-primary         { background: #4f46e5; color: #fff; }
+.btn-primary:hover:not(:disabled)   { background: #4338ca; }
+.btn-secondary       { background: rgba(255,255,255,0.13); color: #e0e7ff; border: 1px solid rgba(255,255,255,0.15); }
+.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.22); }
+.btn-success         { background: #059669; color: #fff; }
+.btn-success:hover:not(:disabled)   { background: #047857; }
+.btn-warning         { background: #d97706; color: #fff; }
+.btn-warning:hover:not(:disabled)   { background: #b45309; }
+.btn-danger          { background: #dc2626; color: #fff; }
+.btn-danger:hover:not(:disabled)    { background: #b91c1c; }
+
+/* Preset dropdown inside toolbar */
+#preset-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#preset-wrap label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #a5b4fc;
+  white-space: nowrap;
+}
+#preset-select {
+  padding: 5px 26px 5px 10px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  color: #e0e7ff;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a5b4fc'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  transition: background 0.12s, border-color 0.12s;
+}
+#preset-select:hover  { background-color: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.35); }
+#preset-select option { background: #1e1b4b; color: #e0e7ff; }
+
+/* ── Chart area ───────────────────────────── */
+#chart-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#chart {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: default;
+}
+
+/* ── Empty state ──────────────────────────── */
+#empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef0f5;
+  z-index: 5;
+}
+#empty-state.hidden { display: none; }
+
+.empty-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 44px 48px 40px;
+  max-width: 540px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+}
+
+.empty-icon {
+  font-size: 52px;
+  line-height: 1;
+  margin-bottom: 18px;
+  filter: drop-shadow(0 2px 6px rgba(79,70,229,0.18));
+}
+
+.empty-card h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.empty-card p {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
+/* Preset tiles */
+#empty-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.preset-tile {
+  padding: 10px 18px;
+  background: #eef2ff;
+  border: 1.5px solid #a5b4fc;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #312e81;
+  transition: background 0.12s, border-color 0.12s, transform 0.08s, box-shadow 0.12s;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.preset-tile:hover  { background: #e0e7ff; border-color: #6366f1; box-shadow: 0 2px 10px rgba(99,102,241,0.15); transform: translateY(-1px); }
+.preset-tile:active { transform: scale(0.97); }
+
+.empty-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #d1d5db;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 20px;
+}
+.empty-divider::before,
+.empty-divider::after { content:''; flex:1; height:1px; background:#e5e7eb; }
+
+.empty-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.empty-actions .btn { padding: 9px 18px; font-size: 13px; }
+
+/* loading spinner on preset tile */
+.preset-tile.loading { opacity: 0.6; pointer-events: none; }
+.preset-tile.loading::before { content: '⏳ '; }
+
+/* ── Hint bar ─────────────────────────────── */
+#hint {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30,27,75,0.82);
+  color: #c7d2fe;
+  padding: 6px 18px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  z-index: 4;
+}
+#hint.hidden { display: none; }
+
+/* ── Drag ghost ───────────────────────────── */
+#drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background: #fff;
+  border: 2.5px solid #4f46e5;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+  box-shadow: 0 8px 32px rgba(79,70,229,0.28);
+  opacity: 0.88;
+  display: none;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Modals ───────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+}
+.modal-overlay.hidden { display: none; }
+
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 28px 22px;
+  width: 420px;
+  max-width: 95vw;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+  animation: modalIn 0.14s ease;
+}
+@keyframes modalIn {
+  from { opacity:0; transform:scale(0.94) translateY(-8px); }
+  to   { opacity:1; transform:scale(1)    translateY(0);    }
+}
+.modal h2 { font-size:17px; font-weight:700; color:#111827; margin-bottom:20px; }
+
+.form-group          { margin-bottom: 14px; }
+.form-group label    {
+  display:block; font-size:11px; font-weight:700; color:#6b7280;
+  margin-bottom:5px; text-transform:uppercase; letter-spacing:0.06em;
+}
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width:100%; padding:8px 11px; border:1.5px solid #d1d5db; border-radius:7px;
+  font-size:14px; color:#111827; outline:none;
+  transition:border-color 0.12s, box-shadow 0.12s;
+  font-family:inherit; background:#fff;
+}
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus { border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,0.14); }
+.form-group textarea { resize:vertical; min-height:68px; line-height:1.5; }
+
+.modal-actions {
+  display:flex; gap:8px; justify-content:flex-end;
+  margin-top:20px; padding-top:16px; border-top:1px solid #f3f4f6;
+}
+.modal-actions .btn { padding:8px 16px; font-size:13px; }
+
+/* ── Context menu ─────────────────────────── */
+#ctx-menu {
+  position:fixed; background:#fff; border:1px solid #e5e7eb;
+  border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,0.14);
+  padding:5px; z-index:2000; min-width:175px;
+}
+#ctx-menu.hidden { display:none; }
+.ctx-item {
+  padding:7px 13px; font-size:13px; cursor:pointer; border-radius:6px;
+  display:flex; align-items:center; gap:9px; color:#374151; transition:background 0.1s;
+}
+.ctx-item:hover        { background:#f3f4f6; }
+.ctx-item.danger       { color:#dc2626; }
+.ctx-item.danger:hover { background:#fef2f2; }
+.ctx-sep { height:1px; background:#f3f4f6; margin:4px 5px; }
+
+/* ── JSON textarea ────────────────────────── */
+#json-textarea {
+  font-family:'Courier New',Courier,monospace !important;
+  font-size:11.5px !important; line-height:1.5 !important;
+  background:#f8fafc !important; min-height:300px;
+}
+
+/* XHR error toast */
+#xhr-error {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: #fef2f2; border: 1.5px solid #fca5a5;
+  color: #7f1d1d; border-radius: 10px;
+  padding: 12px 18px; font-size: 13px; font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  z-index: 9998; max-width: 340px;
+  animation: slideIn 0.2s ease;
+}
+@keyframes slideIn {
+  from { opacity:0; transform:translateY(12px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ TOOLBAR ═══════════════════ -->
+<div id="toolbar">
+  <span id="toolbar-title">🏢 Org Chart Editor</span>
+  <div class="sep"></div>
+  <button class="btn btn-primary"   id="btn-add-child"   onclick="addChildToSelected()">＋ Add Child</button>
+  <button class="btn btn-secondary" id="btn-add-sibling" onclick="addSiblingToSelected()">＋ Add Sibling</button>
+  <button class="btn btn-secondary" id="btn-edit"        onclick="editSelected()">✏️ Edit</button>
+  <button class="btn btn-danger"    id="btn-delete"      onclick="deleteSelected()">🗑 Delete</button>
+  <div class="sep"></div>
+  <button class="btn btn-secondary" id="btn-layout" onclick="autoLayout()">⚡ Auto Layout</button>
+  <button class="btn btn-secondary" id="btn-fit"    onclick="fitToScreen()">⊠ Fit</button>
+  <!-- Preset dropdown injected here by JS if PRESET_FILES is non-empty -->
+  <div class="spacer"></div>
+  <button class="btn btn-success"  id="btn-save" onclick="saveToJSON()">💾 Save JSON</button>
+  <button class="btn btn-warning"               onclick="loadFromFile()">📂 Load JSON</button>
+</div>
+
+<!-- ═══════════════════ CHART ═══════════════════ -->
+<div id="chart-container">
+  <svg id="chart"></svg>
+
+  <!-- Empty state (shown when no chart is loaded) -->
+  <div id="empty-state">
+    <div class="empty-card">
+      <div class="empty-icon">🏢</div>
+      <h2>No Org Chart Loaded</h2>
+      <p>Choose a preset file below, browse for a JSON file on your computer,<br>or start fresh with a blank chart.</p>
+
+      <!-- Preset tiles (populated by JS) -->
+      <div id="empty-presets"></div>
+
+      <div class="empty-divider" id="empty-divider">or</div>
+
+      <div class="empty-actions">
+        <button class="btn btn-warning" onclick="loadFromFile()">📂 Browse for JSON file</button>
+        <button class="btn btn-primary" onclick="startFromScratch()">✦ Start from scratch</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hint" class="hidden">Double-click to edit &nbsp;·&nbsp; Right-click for options &nbsp;·&nbsp; Drag onto a node to reparent &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Del to delete</div>
+</div>
+
+<!-- ═══════════════════ DRAG GHOST ═══════════════════ -->
+<div id="drag-ghost"></div>
+
+<!-- ═══════════════════ EDIT MODAL ═══════════════════ -->
+<div class="modal-overlay hidden" id="edit-modal-overlay">
+  <div class="modal">
+    <h2 id="edit-modal-heading">Edit Node</h2>
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="edit-title" placeholder="e.g. Director of Product" autocomplete="off"/>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="edit-desc" placeholder="Role summary or brief description"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Link Style (connection to parent)</label>
+      <select id="edit-style">
+        <option value="solid">── Solid  —  Direct Report</option>
+        <option value="dashed">╌╌ Dashed  —  Advisory / No Authority</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Node Colour</label>
+      <select id="edit-color">
+        <option value="default">⬜ White (Default)</option>
+        <option value="indigo">🟦 Indigo</option>
+        <option value="blue">🔵 Blue</option>
+        <option value="teal">🩵 Teal</option>
+        <option value="green">🟢 Green</option>
+        <option value="purple">🟣 Purple</option>
+        <option value="orange">🟠 Orange</option>
+        <option value="red">🔴 Red</option>
+        <option value="gray">⬜ Gray</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary"    onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-danger" id="edit-delete-btn" onclick="deleteEditNode()">Delete Node</button>
+      <button class="btn btn-primary"      onclick="saveEditModal()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ JSON MODAL ═══════════════════ -->
+<div class="modal-overlay hidden" id="json-modal-overlay">
+  <div class="modal" style="width:580px; max-width:96vw;">
+    <h2>Save / Load JSON</h2>
+    <div class="form-group">
+      <label>Chart Data (editable)</label>
+      <textarea id="json-textarea" spellcheck="false" placeholder="Paste org-chart JSON here, then click Load…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeJsonModal()">Cancel</button>
+      <button class="btn btn-primary"   onclick="importFromJsonModal()">Load This JSON</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ CONTEXT MENU ═══════════════════ -->
+<div id="ctx-menu" class="hidden">
+  <div class="ctx-item"        id="ctx-add-child"   onclick="ctxAddChild()">  ➕ Add Child Node</div>
+  <div class="ctx-item"        id="ctx-add-sibling" onclick="ctxAddSibling()">➕ Add Sibling Node</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item"                             onclick="ctxEdit()">       ✏️ Edit Node</div>
+  <div class="ctx-item"                             onclick="ctxCollapse()">   ▸  Collapse / Expand</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" id="ctx-delete"      onclick="ctxDelete()">     🗑️ Delete Node</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     D3 + SCRIPT
+═══════════════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+
+// ═══════════════════════════════════════════════════════
+//  ★ PRESET FILES CONFIG
+//  Add { name, url } entries to enable the preset dropdown
+//  and the clickable tiles on the empty-state screen.
+//  URLs can be relative paths or full https:// addresses.
+//  Leave the array empty to hide the preset UI entirely.
+// ═══════════════════════════════════════════════════════
+
+const PRESET_FILES = [
+  //{ name: "Org Chart – Now",    url: "Org Chart - Now.json"    },
+  //{ name: "Org Chart – Future", url: "Org Chart - Future.json" },
+];
+
+// ═══════════════════════════════════════════════════════
+// LAYOUT CONFIG
+// ═══════════════════════════════════════════════════════
+
+const NW = 172, NH = 70, HGAP = 44, VGAP = 88;
+
+const PALETTE = {
+  default: { bg:"#ffffff", border:"#d1d5db", title:"#111827", desc:"#6b7280" },
+  indigo:  { bg:"#eef2ff", border:"#818cf8", title:"#312e81", desc:"#4338ca" },
+  blue:    { bg:"#eff6ff", border:"#60a5fa", title:"#1e3a8a", desc:"#3b82f6" },
+  teal:    { bg:"#f0fdfa", border:"#2dd4bf", title:"#134e4a", desc:"#0d9488" },
+  green:   { bg:"#f0fdf4", border:"#4ade80", title:"#14532d", desc:"#16a34a" },
+  purple:  { bg:"#faf5ff", border:"#c084fc", title:"#4c1d95", desc:"#9333ea" },
+  orange:  { bg:"#fff7ed", border:"#fb923c", title:"#7c2d12", desc:"#ea580c" },
+  red:     { bg:"#fef2f2", border:"#f87171", title:"#7f1d1d", desc:"#dc2626" },
+  gray:    { bg:"#f9fafb", border:"#d1d5db", title:"#374151", desc:"#9ca3af" },
+};
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+
+let chartData  = null;   // null = no chart loaded
+let selectedId = null;
+let contextId  = null;
+let editNodeId = null;
+let idCounter  = 5000;
+
+// drag state
+let dragNodeId  = null;
+let dragOverId  = null;
+let isDragging  = false;
+let dragStartXY = null;
+
+// live element caches (rebuilt every render)
+let nodeBgCache  = {};   // id → SVGRectElement
+let nodePosCache = {};   // id → { x, y, w, h } in SVG user-space
+
+// ═══════════════════════════════════════════════════════
+// SVG SETUP  (one-time)
+// ═══════════════════════════════════════════════════════
+
+const svgEl = document.getElementById('chart');
+const svg   = d3.select(svgEl);
+
+// Drop-shadow filter
+const defs = svg.append('defs');
+const filt = defs.append('filter')
+  .attr('id','node-shadow')
+  .attr('x','-25%').attr('y','-25%').attr('width','150%').attr('height','150%');
+filt.append('feDropShadow')
+  .attr('dx',0).attr('dy',2).attr('stdDeviation',3)
+  .attr('flood-color','rgba(0,0,0,0.10)');
+
+const rootG = svg.append('g').attr('class','root');
+
+const zoomBeh = d3.zoom()
+  .scaleExtent([0.12, 3.5])
+  .filter(ev => {
+    if (ev.type === 'wheel') return true;
+    if (ev.type === 'touchstart') return ev.touches && ev.touches.length >= 2;
+    return ev.target === svgEl || ev.target === rootG.node();
+  })
+  .on('zoom', ev => rootG.attr('transform', ev.transform));
+
+svg.call(zoomBeh).on('dblclick.zoom', null);
+svg.on('click', () => { selectedId = null; refreshSelection(); updateToolbar(); });
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+
+function uid() { return 'nd' + (++idCounter); }
+
+function findNode(tree, id) {
+  if (!tree) return null;
+  if (tree.id === id) return tree;
+  for (const c of (tree.children || [])) { const r = findNode(c, id); if (r) return r; }
+  return null;
+}
+
+function findParent(tree, id, par = null) {
+  if (!tree) return undefined;
+  if (tree.id === id) return par;
+  for (const c of (tree.children || [])) {
+    const r = findParent(c, id, tree);
+    if (r !== undefined) return r;
+  }
+  return undefined;
+}
+
+function removeNode(tree, id) {
+  const arr = tree.children;
+  if (!arr) return null;
+  const i = arr.findIndex(c => c.id === id);
+  if (i !== -1) return arr.splice(i, 1)[0];
+  for (const c of arr) { const r = removeNode(c, id); if (r) return r; }
+  return null;
+}
+
+function isAncestorOf(ancestorId, nodeId) {
+  if (!chartData) return false;
+  const anc = findNode(chartData, ancestorId);
+  return anc ? !!findNode(anc, nodeId) : false;
+}
+
+function mkNode(title = 'New Node', desc = '') {
+  return { id: uid(), title, description: desc, style: 'solid', color: 'default', children: [] };
+}
+
+function cleanForJSON(node) {
+  const n = Object.assign({}, node);
+  if (n._hidden) { n.children = n._hidden; delete n._hidden; }
+  n.children = (n.children || []).map(cleanForJSON);
+  return n;
+}
+
+function wrapText(text, maxCh) {
+  if (!text) return [''];
+  const words = String(text).split(' ');
+  const lines = []; let cur = '';
+  for (const w of words) {
+    const cand = cur ? cur + ' ' + w : w;
+    if (cand.length <= maxCh) { cur = cand; }
+    else { if (cur) lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+// ═══════════════════════════════════════════════════════
+// EMPTY STATE
+// ═══════════════════════════════════════════════════════
+
+function showEmptyState() {
+  document.getElementById('empty-state').classList.remove('hidden');
+  document.getElementById('hint').classList.add('hidden');
+}
+
+function hideEmptyState() {
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('hint').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════
+// PRESET UI  (toolbar dropdown + empty-state tiles)
+// ═══════════════════════════════════════════════════════
+
+function initPresetUI() {
+  if (!PRESET_FILES.length) {
+    // Hide the "or" divider if there are no presets
+    document.getElementById('empty-divider').style.display = 'none';
+    return;
+  }
+
+  // ── 1. Toolbar dropdown ──────────────────────────────
+  const wrap = document.createElement('div');
+  wrap.id = 'preset-wrap';
+  wrap.innerHTML = `<label>Preset:</label>
+    <select id="preset-select">
+      <option value="">— choose —</option>
+      ${PRESET_FILES.map((p, i) => `<option value="${i}">${p.name}</option>`).join('')}
+    </select>`;
+  wrap.querySelector('#preset-select').addEventListener('change', function () {
+    const idx = parseInt(this.value, 10);
+    if (isNaN(idx)) return;
+    this.value = '';   // reset dropdown immediately
+    loadPreset(PRESET_FILES[idx].url, PRESET_FILES[idx].name);
+  });
+
+  // Insert before the spacer
+  const spacer = document.querySelector('#toolbar .spacer');
+  spacer.parentNode.insertBefore(wrap, spacer);
+
+  // ── 2. Empty-state tiles ─────────────────────────────
+  const tilesDiv = document.getElementById('empty-presets');
+  PRESET_FILES.forEach((p, i) => {
+    const tile = document.createElement('button');
+    tile.className = 'preset-tile';
+    tile.dataset.idx = i;
+    tile.innerHTML = `📄 ${p.name}`;
+    tile.addEventListener('click', () => loadPreset(p.url, p.name, tile));
+    tilesDiv.appendChild(tile);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// LOAD PRESET VIA XHR (fetch)
+// ═══════════════════════════════════════════════════════
+
+function loadPreset(url, name, tileEl) {
+  if (tileEl) tileEl.classList.add('loading');
+
+  fetch(url)
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status} — ${res.statusText}`);
+      return res.json();
+    })
+    .then(data => {
+      chartData  = data;
+      selectedId = null;
+      if (tileEl) tileEl.classList.remove('loading');
+      render();
+      setTimeout(fitToScreen, 80);
+    })
+    .catch(err => {
+      if (tileEl) tileEl.classList.remove('loading');
+      showXhrError(`Could not load "${name}":<br>${err.message}`);
+    });
+}
+
+function showXhrError(msg) {
+  // Remove any existing error toast
+  const old = document.getElementById('xhr-error');
+  if (old) old.remove();
+  const el = document.createElement('div');
+  el.id = 'xhr-error';
+  el.innerHTML = '⚠️ ' + msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
+// ═══════════════════════════════════════════════════════
+// START FROM SCRATCH
+// ═══════════════════════════════════════════════════════
+
+function startFromScratch() {
+  chartData  = mkNode('New Role', '');
+  selectedId = chartData.id;
+  render();
+  setTimeout(() => { fitToScreen(); openEditModal(chartData.id); }, 80);
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+
+function render() {
+  rootG.selectAll('*').remove();
+  nodeBgCache  = {};
+  nodePosCache = {};
+
+  if (!chartData) { showEmptyState(); updateToolbar(); return; }
+  hideEmptyState();
+
+  const hier   = d3.hierarchy(chartData, d => (d.children && d.children.length) ? d.children : null);
+  const layout = d3.tree().nodeSize([NW + HGAP, NH + VGAP]);
+  layout(hier);
+
+  // ─── Links ─────────────────────────────────────────
+  const linkG = rootG.append('g').attr('class', 'links');
+  hier.links().forEach(lnk => {
+    const sx = lnk.source.x, sy = lnk.source.y;
+    const tx = lnk.target.x, ty = lnk.target.y;
+    const dashed = lnk.target.data.style === 'dashed';
+    const midY   = (sy + NH / 2 + ty - NH / 2) / 2;
+    linkG.append('path')
+      .attr('d', `M${sx},${sy+NH/2} C${sx},${midY} ${tx},${midY} ${tx},${ty-NH/2}`)
+      .attr('fill', 'none')
+      .attr('stroke',           dashed ? '#9ca3af' : '#6b7280')
+      .attr('stroke-width',     dashed ? 1.5 : 2)
+      .attr('stroke-dasharray', dashed ? '7,4' : null)
+      .attr('opacity', 0.7);
+  });
+
+  // ─── Nodes ─────────────────────────────────────────
+  const nodeG = rootG.append('g').attr('class', 'nodes');
+  hier.descendants().forEach(d => {
+    const nd  = d.data;
+    const col = PALETTE[nd.color] || PALETTE.default;
+    const gx  = d.x - NW / 2, gy = d.y - NH / 2;
+
+    nodePosCache[nd.id] = { x: gx, y: gy, w: NW, h: NH };
+
+    const g = nodeG.append('g')
+      .attr('class', 'node-g')
+      .attr('data-id', nd.id)
+      .attr('transform', `translate(${gx},${gy})`);
+
+    const isSelected = nd.id === selectedId;
+    const bgRect = g.append('rect')
+      .attr('class', 'node-bg')
+      .attr('width', NW).attr('height', NH)
+      .attr('rx', 9).attr('ry', 9)
+      .attr('fill', col.bg)
+      .attr('stroke',       isSelected ? '#4f46e5' : col.border)
+      .attr('stroke-width', isSelected ? 3 : 1.5)
+      .attr('filter', 'url(#node-shadow)');
+    nodeBgCache[nd.id] = bgRect.node();
+
+    // Colour accent strip
+    if (nd.color && nd.color !== 'default' && nd.color !== 'gray') {
+      g.append('rect').attr('width', NW).attr('height', 5).attr('rx', 9).attr('ry', 9).attr('fill', col.border);
+      g.append('rect').attr('y', 3).attr('width', NW).attr('height', 4).attr('fill', col.border);
+    }
+
+    // Title
+    const titleLines = wrapText(nd.title, 21);
+    const titleY0    = titleLines.length > 1 ? 16 : 24;
+    titleLines.forEach((ln, i) =>
+      g.append('text')
+        .attr('x', NW/2).attr('y', titleY0 + i*15)
+        .attr('text-anchor', 'middle').attr('font-size', '13px').attr('font-weight', '700')
+        .attr('fill', col.title).text(ln)
+    );
+
+    // Description
+    if (nd.description) {
+      const descLines = wrapText(nd.description, 27).slice(0, 2);
+      const baseY = titleY0 + titleLines.length * 15 + 4;
+      descLines.forEach((ln, i) =>
+        g.append('text')
+          .attr('x', NW/2).attr('y', baseY + i*13)
+          .attr('text-anchor', 'middle').attr('font-size', '11px')
+          .attr('fill', col.desc).text(ln)
+      );
+    }
+
+    // Collapse badge
+    if (nd._hidden && nd._hidden.length) {
+      const bx = NW - 14, by = NH - 14;
+      g.append('circle').attr('cx', bx).attr('cy', by).attr('r', 10)
+        .attr('fill', '#4f46e5').attr('stroke', '#fff').attr('stroke-width', 1.5);
+      g.append('text').attr('x', bx).attr('y', by)
+        .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+        .attr('font-size', '9px').attr('font-weight', '700').attr('fill', '#fff')
+        .text('+' + nd._hidden.length);
+    }
+
+    // Invisible hit rect
+    g.append('rect')
+      .attr('class', 'node-hit')
+      .attr('width', NW).attr('height', NH).attr('rx', 9)
+      .attr('fill', 'transparent').attr('stroke', 'none').style('cursor', 'pointer')
+      .on('mouseenter', () => hoverNode(nd.id, true))
+      .on('mouseleave', () => hoverNode(nd.id, false))
+      .on('click',       ev => { ev.stopPropagation(); selectedId = nd.id; refreshSelection(); updateToolbar(); })
+      .on('dblclick',    ev => { ev.stopPropagation(); selectedId = nd.id; openEditModal(nd.id); })
+      .on('contextmenu', ev => { ev.preventDefault(); ev.stopPropagation(); selectedId = nd.id; showCtxMenu(ev.clientX, ev.clientY, nd.id); })
+      .call(d3.drag()
+        .on('start', ev => onDragStart(ev, nd.id))
+        .on('drag',  ev => onDragMove(ev, nd.id))
+        .on('end',   ev => onDragEnd(ev, nd.id))
+      );
+  });
+
+  updateToolbar();
+}
+
+// ─── Visual helpers (no full re-render) ─────────────────
+
+function refreshSelection() {
+  for (const [id, el] of Object.entries(nodeBgCache)) {
+    const nd  = findNode(chartData, id);
+    const col = PALETTE[nd?.color] || PALETTE.default;
+    el.setAttribute('stroke',       id === selectedId ? '#4f46e5' : col.border);
+    el.setAttribute('stroke-width', id === selectedId ? '3' : '1.5');
+  }
+}
+
+function hoverNode(id, on) {
+  if (isDragging) return;
+  const el = nodeBgCache[id];
+  if (!el || id === selectedId) return;
+  const nd  = findNode(chartData, id);
+  const col = PALETTE[nd?.color] || PALETTE.default;
+  el.setAttribute('stroke',       on ? '#818cf8' : col.border);
+  el.setAttribute('stroke-width', on ? '2.5'     : '1.5');
+}
+
+function updateToolbar() {
+  const hasChart   = !!chartData;
+  const hasSel     = hasChart && !!selectedId;
+  const isRoot     = hasChart && selectedId === chartData.id;
+  document.getElementById('btn-add-child').disabled   = false;        // always usable
+  document.getElementById('btn-add-sibling').disabled = !hasSel || isRoot;
+  document.getElementById('btn-edit').disabled        = !hasSel;
+  document.getElementById('btn-delete').disabled      = !hasSel || isRoot;
+  document.getElementById('btn-layout').disabled      = !hasChart;
+  document.getElementById('btn-fit').disabled         = !hasChart;
+  document.getElementById('btn-save').disabled        = !hasChart;
+}
+
+// ═══════════════════════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════════════════════
+
+const dragGhost = document.getElementById('drag-ghost');
+
+function clientToSvg(cx, cy) {
+  const tr   = d3.zoomTransform(svgEl);
+  const rect = svgEl.getBoundingClientRect();
+  return { x: (cx - rect.left - tr.x) / tr.k, y: (cy - rect.top - tr.y) / tr.k };
+}
+
+function findNodeAtClient(cx, cy, excludeId) {
+  const p = clientToSvg(cx, cy);
+  for (const [id, pos] of Object.entries(nodePosCache)) {
+    if (id === excludeId) continue;
+    if (isAncestorOf(excludeId, id)) continue;
+    if (p.x >= pos.x && p.x <= pos.x + pos.w && p.y >= pos.y && p.y <= pos.y + pos.h)
+      return id;
+  }
+  return null;
+}
+
+function setDragOver(id) {
+  if (dragOverId && nodeBgCache[dragOverId]) {
+    const nd  = findNode(chartData, dragOverId);
+    const col = PALETTE[nd?.color] || PALETTE.default;
+    nodeBgCache[dragOverId].setAttribute('fill',         col.bg);
+    nodeBgCache[dragOverId].setAttribute('stroke',       dragOverId === selectedId ? '#4f46e5' : col.border);
+    nodeBgCache[dragOverId].setAttribute('stroke-width', dragOverId === selectedId ? '3' : '1.5');
+  }
+  dragOverId = id;
+  if (dragOverId && nodeBgCache[dragOverId]) {
+    nodeBgCache[dragOverId].setAttribute('fill',         '#d1fae5');
+    nodeBgCache[dragOverId].setAttribute('stroke',       '#059669');
+    nodeBgCache[dragOverId].setAttribute('stroke-width', '3');
+  }
+}
+
+function onDragStart(ev, nodeId) {
+  if (!chartData) return;
+  if (ev.sourceEvent) ev.sourceEvent.stopPropagation();
+  if (nodeId === chartData.id) return;   // root not draggable
+  dragNodeId  = nodeId;
+  dragOverId  = null;
+  isDragging  = false;
+  dragStartXY = { x: ev.sourceEvent.clientX, y: ev.sourceEvent.clientY };
+  selectedId  = nodeId;
+  refreshSelection();
+  updateToolbar();
+}
+
+function onDragMove(ev, nodeId) {
+  if (!chartData || !dragNodeId || dragNodeId === chartData.id) return;
+  const cx = ev.sourceEvent.clientX, cy = ev.sourceEvent.clientY;
+  if (!isDragging) {
+    const dx = cx - dragStartXY.x, dy = cy - dragStartXY.y;
+    if (Math.sqrt(dx*dx + dy*dy) < 5) return;
+    isDragging = true;
+    dragGhost.textContent = findNode(chartData, nodeId)?.title || '…';
+    dragGhost.style.display = 'block';
+  }
+  dragGhost.style.left = (cx + 14) + 'px';
+  dragGhost.style.top  = (cy - 18) + 'px';
+  const hovered = findNodeAtClient(cx, cy, nodeId);
+  if (hovered !== dragOverId) setDragOver(hovered);
+}
+
+function onDragEnd(ev, nodeId) {
+  dragGhost.style.display = 'none';
+  if (isDragging && dragOverId && dragOverId !== nodeId) {
+    const moved  = removeNode(chartData, nodeId);
+    const target = moved && findNode(chartData, dragOverId);
+    if (moved && target) {
+      if (!target.children) target.children = [];
+      target.children.push(moved);
+    }
+  }
+  dragNodeId  = null;
+  dragOverId  = null;
+  isDragging  = false;
+  dragStartXY = null;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+// TOOLBAR ACTIONS
+// ═══════════════════════════════════════════════════════
+
+function addChildToSelected() {
+  // If no chart, create one from scratch
+  if (!chartData) { startFromScratch(); return; }
+  const parent = (selectedId && findNode(chartData, selectedId)) || chartData;
+  if (!parent.children) parent.children = [];
+  const n = mkNode();
+  parent.children.push(n);
+  selectedId = n.id;
+  render();
+  openEditModal(n.id);
+}
+
+function addSiblingToSelected() {
+  if (!chartData || !selectedId || selectedId === chartData.id) return;
+  const par = findParent(chartData, selectedId);
+  if (!par) return;
+  if (!par.children) par.children = [];
+  const n = mkNode();
+  par.children.push(n);
+  selectedId = n.id;
+  render();
+  openEditModal(n.id);
+}
+
+function editSelected() {
+  if (!selectedId) return;
+  openEditModal(selectedId);
+}
+
+function deleteSelected() {
+  if (!chartData || !selectedId || selectedId === chartData.id) return;
+  if (!confirm('Delete this node and all of its children?')) return;
+  removeNode(chartData, selectedId);
+  selectedId = null;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+// CONTEXT MENU
+// ═══════════════════════════════════════════════════════
+
+const ctxMenu = document.getElementById('ctx-menu');
+
+function showCtxMenu(cx, cy, nodeId) {
+  if (!chartData) return;
+  contextId = nodeId;
+  refreshSelection();
+  updateToolbar();
+  ctxMenu.classList.remove('hidden');
+  ctxMenu.style.left = cx + 'px';
+  ctxMenu.style.top  = cy + 'px';
+  requestAnimationFrame(() => {
+    const r = ctxMenu.getBoundingClientRect();
+    if (r.right  > window.innerWidth)  ctxMenu.style.left = (cx - r.width)  + 'px';
+    if (r.bottom > window.innerHeight) ctxMenu.style.top  = (cy - r.height) + 'px';
+  });
+  const isRoot = nodeId === chartData.id;
+  document.getElementById('ctx-add-sibling').style.display = isRoot ? 'none' : '';
+  document.getElementById('ctx-delete').style.display      = isRoot ? 'none' : '';
+}
+
+function hideCtxMenu() { ctxMenu.classList.add('hidden'); }
+
+document.addEventListener('click', hideCtxMenu);
+document.addEventListener('keydown', ev => {
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (ev.key === 'Escape') { hideCtxMenu(); closeEditModal(); closeJsonModal(); }
+  if ((ev.key === 'Delete' || ev.key === 'Backspace') && selectedId)
+    if (document.getElementById('edit-modal-overlay').classList.contains('hidden')) deleteSelected();
+  if (ev.key === 'Enter' && selectedId)
+    if (document.getElementById('edit-modal-overlay').classList.contains('hidden')) openEditModal(selectedId);
+});
+
+function ctxAddChild() {
+  hideCtxMenu();
+  const p = findNode(chartData, contextId);
+  if (!p) return;
+  if (!p.children) p.children = [];
+  const n = mkNode();
+  p.children.push(n);
+  selectedId = n.id;
+  render();
+  openEditModal(n.id);
+}
+function ctxAddSibling() {
+  hideCtxMenu();
+  const par = findParent(chartData, contextId);
+  if (!par) return;
+  if (!par.children) par.children = [];
+  const n = mkNode();
+  par.children.push(n);
+  selectedId = n.id;
+  render();
+  openEditModal(n.id);
+}
+function ctxEdit()     { hideCtxMenu(); openEditModal(contextId); }
+function ctxCollapse() {
+  hideCtxMenu();
+  const nd = findNode(chartData, contextId);
+  if (!nd) return;
+  if (nd._hidden) { nd.children = nd._hidden; delete nd._hidden; }
+  else if (nd.children?.length) { nd._hidden = nd.children; nd.children = []; }
+  render();
+}
+function ctxDelete() {
+  hideCtxMenu();
+  if (!chartData || contextId === chartData.id) { alert('Cannot delete the root node.'); return; }
+  if (!confirm('Delete this node and all of its children?')) return;
+  removeNode(chartData, contextId);
+  if (selectedId === contextId) selectedId = null;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+// EDIT MODAL
+// ═══════════════════════════════════════════════════════
+
+function openEditModal(nodeId) {
+  editNodeId = nodeId;
+  const nd = findNode(chartData, nodeId);
+  if (!nd) return;
+  const isRoot = nodeId === chartData.id;
+  document.getElementById('edit-modal-heading').textContent = isRoot ? 'Edit Root Node' : 'Edit Node';
+  document.getElementById('edit-title').value = nd.title       || '';
+  document.getElementById('edit-desc').value  = nd.description || '';
+  document.getElementById('edit-style').value = nd.style       || 'solid';
+  document.getElementById('edit-color').value = nd.color       || 'default';
+  document.getElementById('edit-delete-btn').style.display = isRoot ? 'none' : '';
+  document.getElementById('edit-modal-overlay').classList.remove('hidden');
+  setTimeout(() => { const t = document.getElementById('edit-title'); t.focus(); t.select(); }, 60);
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.add('hidden');
+  editNodeId = null;
+}
+
+function saveEditModal() {
+  if (!editNodeId) return;
+  const nd = findNode(chartData, editNodeId);
+  if (!nd) return;
+  nd.title       = document.getElementById('edit-title').value.trim() || 'Untitled';
+  nd.description = document.getElementById('edit-desc').value.trim();
+  nd.style       = document.getElementById('edit-style').value;
+  nd.color       = document.getElementById('edit-color').value;
+  closeEditModal();
+  render();
+}
+
+function deleteEditNode() {
+  if (!editNodeId || editNodeId === chartData.id) return;
+  if (!confirm('Delete this node and all of its children?')) return;
+  const id = editNodeId;
+  closeEditModal();
+  removeNode(chartData, id);
+  if (selectedId === id) selectedId = null;
+  render();
+}
+
+document.getElementById('edit-title').addEventListener('keydown', ev => {
+  if (ev.key === 'Enter') saveEditModal();
+});
+
+// ═══════════════════════════════════════════════════════
+// AUTO LAYOUT & FIT
+// ═══════════════════════════════════════════════════════
+
+function autoLayout() { if (chartData) { render(); fitToScreen(); } }
+
+function fitToScreen() {
+  if (!chartData) return;
+  const W = svgEl.clientWidth, H = svgEl.clientHeight;
+  const rEl = document.querySelector('.root');
+  if (!rEl) return;
+  const bb = rEl.getBBox();
+  if (!bb.width || !bb.height) return;
+  const PAD   = 64;
+  const scale = Math.min((W - PAD*2) / bb.width, (H - PAD*2) / bb.height, 1.3);
+  const tx    = (W - bb.width * scale) / 2 - bb.x * scale;
+  const ty    = PAD - bb.y * scale;
+  svg.transition().duration(500)
+     .call(zoomBeh.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+}
+
+// ═══════════════════════════════════════════════════════
+// SAVE / LOAD JSON
+// ═══════════════════════════════════════════════════════
+
+function saveToJSON() {
+  if (!chartData) return;
+  const clean = cleanForJSON(JSON.parse(JSON.stringify(chartData)));
+  const text  = JSON.stringify(clean, null, 2);
+  document.getElementById('json-textarea').value = text;
+  document.getElementById('json-modal-overlay').classList.remove('hidden');
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(text);
+  a.download = 'org-chart.json';
+  a.click();
+}
+
+function loadFromFile() {
+  const inp = document.createElement('input');
+  inp.type   = 'file';
+  inp.accept = '.json,application/json';
+  inp.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('json-textarea').value = ev.target.result;
+      document.getElementById('json-modal-overlay').classList.remove('hidden');
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
+
+function importFromJsonModal() {
+  const text = document.getElementById('json-textarea').value.trim();
+  if (!text) { closeJsonModal(); return; }
+  try {
+    chartData  = JSON.parse(text);
+    selectedId = null;
+    closeJsonModal();
+    render();
+    setTimeout(fitToScreen, 80);
+  } catch (err) {
+    alert('Invalid JSON: ' + err.message);
+  }
+}
+
+function closeJsonModal() {
+  document.getElementById('json-modal-overlay').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+
+window.addEventListener('resize', () => { if (chartData) render(); });
+
+initPresetUI();   // build preset dropdown + tiles from PRESET_FILES
+render();         // chartData is null → shows empty state
+
+</script>
+</body>
+</html>
