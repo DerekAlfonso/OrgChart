@@ -1,0 +1,68 @@
+{
+  "id": "ceo",
+  "title": "CEO",
+  "description": "",
+  "style": "solid",
+  "color": "indigo",
+  "children": [
+    {
+      "id": "cpo",
+      "title": "CPO",
+      "description": "Product strategy",
+      "style": "solid",
+      "color": "default",
+      "children": [
+        {
+          "id": "vop",
+          "title": "VP of Product",
+          "description": "Runs the product team",
+          "style": "solid",
+          "color": "default",
+          "children": [
+            {
+              "id": "pmd",
+              "title": "PMs · Designers",
+              "description": "Product researchers",
+              "style": "solid",
+              "color": "teal",
+              "children": []
+            },
+            {
+              "id": "aiswe",
+              "title": "AI / SW Engineers",
+              "description": "+ Data Engineer",
+              "style": "solid",
+              "color": "blue",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cto",
+      "title": "CTO",
+      "description": "was VP of AI Eng",
+      "style": "solid",
+      "color": "default",
+      "children": [
+        {
+          "id": "emtl",
+          "title": "Eng Managers / TLs",
+          "description": "AI + platform teams",
+          "style": "solid",
+          "color": "blue",
+          "children": []
+        },
+        {
+          "id": "itd",
+          "title": "IT Director",
+          "description": "Internal IT",
+          "style": "solid",
+          "color": "default",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "id": "ceo",
+  "title": "CEO",
+  "description": "",
+  "style": "solid",
+  "color": "indigo",
+  "children": [
+    {
+      "id": "cpo",
+      "title": "CPO",
+      "description": "Product + development org",
+      "style": "solid",
+      "color": "default",
+      "children": [
+        {
+          "id": "dop",
+          "title": "Director of Product",
+          "description": "Day-to-day product lead",
+          "style": "solid",
+          "color": "default",
+          "children": [
+            {
+              "id": "pc",
+              "title": "Product Consultant",
+              "description": "Advisor & coach to Director of Product",
+              "style": "dashed",
+              "color": "gray",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "vpaie",
+          "title": "VP of AI Engineering",
+          "description": "Engineering, AI, IT",
+          "style": "solid",
+          "color": "default",
+          "children": [
+            {
+              "id": "aiet",
+              "title": "AI / Eng Team",
+              "description": "ICs",
+              "style": "solid",
+              "color": "blue",
+              "children": []
+            },
+            {
+              "id": "itd",
+              "title": "IT Director",
+              "description": "Internal IT + data",
+              "style": "solid",
+              "color": "default",
+              "children": [
+                {
+                  "id": "da",
+                  "title": "Data Analyst",
+                  "description": "Preps client data for AI use cases",
+                  "style": "solid",
+                  "color": "purple",
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
