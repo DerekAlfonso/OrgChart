@@ -1,6 +1,6 @@
 # Org Chart Editor
 
-An interactive, browser-based org chart editor. Open `org-chart.html` in any modern browser — no server, no install, no dependencies beyond an internet connection for the D3 library.
+An interactive, browser-based org chart editor. Open `index.html` in any modern browser — no server, no install, no dependencies beyond an internet connection for the D3 library.
 
 ---
 
@@ -19,7 +19,7 @@ An interactive, browser-based org chart editor. Open `org-chart.html` in any mod
 
 ### Loading a chart
 
-When you open `org-chart.html` you are greeted by an empty-state screen with three options:
+When you open `index.html` you are greeted by an empty-state screen with three options:
 
 | Option | How |
 |---|---|
@@ -65,7 +65,7 @@ The saved JSON is plain text and fully round-trips: load → edit → save → r
 
 ## How to configure the tool
 
-All configuration lives in a single block near the top of the `<script>` section in `org-chart.html`:
+All configuration lives in a single block near the top of the `<script>` section in `index.html`:
 
 ```js
 // ★ PRESET FILES CONFIG
@@ -166,9 +166,62 @@ Each chart is a single JSON object. The root object and every node share the sam
 
 ---
 
+## Deploying a public version via Cloudflare
+
+The editor is a single self-contained HTML file with no server-side dependencies, which makes it trivial to host publicly. The two most straightforward options are a direct upload through the Cloudflare Dashboard or a CLI-based deploy with Wrangler.
+
+### Option 1 — Cloudflare Dashboard (no CLI required)
+
+1. **Open the Cloudflare Dashboard** at [dash.cloudflare.com](https://dash.cloudflare.com) and log in.
+2. In the left sidebar go to **Workers & Pages**, then click **Create**.
+3. Select the **Pages** tab and choose **Upload assets**.
+4. Give your project a name (e.g. `my-org-chart`) and click **Create project**.
+5. Drag and drop your `index.html` file (and any JSON preset files you want to serve alongside it) into the upload area, then click **Deploy site**.
+6. Cloudflare will issue a `*.pages.dev` URL within seconds. You can add a custom domain later under the project's **Custom domains** tab.
+
+Subsequent updates follow the same flow: open the project, go to **Deployments**, click **Create new deployment**, and upload the updated file.
+
+### Option 2 — Wrangler CLI
+
+Wrangler is Cloudflare's official CLI tool. This approach is better suited to a repeatable deploy pipeline or when you want to deploy directly from a terminal.
+
+**Prerequisites**
+
+- [Node.js](https://nodejs.org) 18 or later
+- A [Cloudflare Dash](https://dash.cloudflare.com/) account
+
+**Steps**
+
+```bash
+# 1. Install Wrangler globally
+npm install -g wrangler
+
+# 2. Authenticate with your Cloudflare account
+wrangler login
+
+# 3. From the folder containing index.html, deploy to Pages
+wrangler pages deploy . --project-name=my-org-chart
+```
+
+On the first run Wrangler will create the Pages project automatically. Every subsequent run deploys a new version.
+
+If you want a different HTML file name served at the root URL, you can tell Wrangler which file is the entry point by placing a `_redirects` file in the same folder:
+
+```
+/ /org-chart.html 200
+```
+
+**No `wrangler.toml` is needed** for a static Pages deployment. The CLI command above is sufficient. A config file is only required if you are deploying a Cloudflare Worker (server-side JavaScript), which this project does not use.
+
+### Serving preset JSON files publicly
+
+If your `PRESET_FILES` config references relative paths, upload those JSON files alongside `index.html` in the same deploy. Cloudflare Pages will serve them at the same origin, so the `fetch()` calls in the app will resolve correctly with no CORS issues.
+
+---
+
 ## Files in this folder
 
 | File | Description |
 |---|---|
-| `org-chart.html` | The self-contained editor application |
+| `index.html` | The self-contained viewer / editor application |
 | `README.md` | This file |
