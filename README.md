@@ -171,7 +171,4 @@ Each chart is a single JSON object. The root object and every node share the sam
 | File | Description |
 |---|---|
 | `org-chart.html` | The self-contained editor application |
-| `Org Chart - Now.json` | Current org structure (NOW state) |
-| `Org Chart - Future.json` | Target org structure (FUTURE state, 12–24 months) |
-| `Org Chart.png` | Original reference image the charts were built from |
-| `Org Chart README.md` | This file |
+| `README.md` | This file |
